@@ -1,0 +1,35 @@
+---
+- name: deploy task
+
+
+  hosts: "{{host}}"
+  remote_user: root
+  tasks:
+    - name: get vars deploy_dir
+      command: date +%F-%H-%M-%S
+      register: deploy_dir
+
+    - name: get vars war
+      shell: basename '{{url}}'
+      register: war
+
+    - name: shutdown tomcat
+      service: name=tomcat  state=stopped
+      # state=directory is not supported by ansible 2.0+
+
+    - name: mkdir  '{{deploy_dir.stdout}}' 
+      file: path=/data0/www/{{deploy_dir.stdout}} state=directory owner=tomcat group=tomcat
+
+    - name: upzip war2
+      ## here quote delpoy_dir is part of dir name
+      unarchive: copy=no src='{{url}}' dest=/data0/www/{{deploy_dir.stdout}}  owner=tomcat group=tomcat
+
+    - name: link current to the latest issue
+      file: > 
+            state=link  
+            src=/data0/www/{{deploy_dir.stdout}} 
+            dest=/data0/www/current 
+            owner=tomcat group=tomcat
+
+    - name: start tomcat
+      service: name=tomcat  state=started

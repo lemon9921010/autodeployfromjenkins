@@ -1,0 +1,34 @@
+---
+- name: rollback task
+  hosts: '{{ host }}'
+  remote_user: root
+  tasks:
+   - name: copy get_cur_dir
+     copy: src=/data0/script/get_cur.sh dest=/data0/script/get_cur.sh mode=0744
+
+   - name: copy get_rb_dir list
+     copy: src=/data0/script/get_rb.sh dest=/data0/script/get_rb.sh mode=0744
+
+   - name: get current  dir
+     shell: sh /data0/script/get_cur.sh
+     register: cur_dir
+
+   - name: get rollback dir
+     shell: sh /data0/script/get_rb.sh
+     register: rb_dir
+ 
+   - name: shutdown tomcat
+     service: name=tomcat  state=stopped
+
+   - name: romove bad deploy {{cur_dir.stdout}}
+     file: path=/data0/www/{{cur_dir.stdout}}  state=absent
+
+   - name: roll to last delpoy {{rb_dir.stdout}}
+     file: >
+        src=/data0/www/{{rb_dir.stdout}} 
+        dest=/data0/www/current 
+        state=link owner=tomcat group=tomcat
+
+   - name: start tomcat
+     service: name=tomcat  state=started
+
